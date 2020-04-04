@@ -5,6 +5,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from math import inf as infinity
 import datetime
+import copy
 from os import system
 #기본적인 UI구성요소를 제공하는 클레스들은 PyQt5.QtWidgets모듈에 포함되어 있음
 #https://codetorial.net/entry/reimplement2
@@ -194,9 +195,9 @@ class MyApp(QWidget):
     def onActivated(self, text):
         #level button
         if text == '상급':
-            self.level = 5
-        elif text == '중급':
             self.level = 3
+        elif text == '중급':
+            self.level = 2
         elif text == '하급':
             self.level = 1
         #firt player button
@@ -282,7 +283,7 @@ class MyApp(QWidget):
                     x, y, dd = self.minimax(self.grid, 0, self.computer, x, y, self.b_x1, self.b_y1, self.b_x2, self.b_y2)
                 else: #alpha-beta pruning
                     # 3초 timer를 만든다. 알고리즘 탐색시 결과가 3초이내 나오게 하기위해서
-                    self.timer = datetime.datetime.now() + datetime.timedelta(seconds=3)
+                    #self.timer = datetime.datetime.now() + datetime.timedelta(seconds=3)
                     x, y, dd = self.alpha_beta(self.grid, 0, self.computer, [-1, -1, -infinity], [-1, -1, infinity], self.b_x1, self.b_y1, self.b_x2, self.b_y2)
                 self.draw_baduk(x, y, self.computer) #바둑 배치
                 self.b_x1, self.b_y1, self.b_x2, self.b_y2 = self.boundary(x, y, self.b_x1, self.b_y1, self.b_x2, self.b_y2) #경계 재설정
@@ -301,20 +302,20 @@ class MyApp(QWidget):
     #return : 새로운 경계 (x1, y1, x2, y2)
     def boundary(self, x, y, x1, y1, x2, y2):
         #기존 경계에 x or y있거나 벗어난 곳에 있을 경우 경계 바꿔준다.
-        if x <= x1:
-            x1 = x - 1
+        if x < x1:
+            x1 = x-1
             if x1 < 0:
                 x1 = 0
-        if y <= y1:
-            y1 = y - 1
+        if y < y1:
+            y1 = y-1
             if y1 < 0:
                 y1 = 0
-        if x >= x2:
-            x2 = x + 1
+        if x > x2:
+            x2 = x+1
             if x2 > 14:
                 x2 = 14
-        if y >= y2:
-            y2 = y + 1
+        if y > y2:
+            y2 = y+1
             if y2 > 14:
                 y2 = 14
         return [x1, y1, x2, y2]
@@ -359,55 +360,69 @@ class MyApp(QWidget):
     #return : min or max 깊이에서의 각 node별 min or max 값과 해당 좌표
     def alpha_beta(self, state, depth, player, a, b, x1, y1, x2, y2):
         best = [-1, -1, 0]  # x, y, score
+        print('현재 ', depth, ' ', self.level)
         if depth == self.level:  # 난이도별 탐색 깊이를 다르게 설정한다.
             # 지정한 평가함수로 값 판별하여 val에 저장
-            val = self.evaluate(state, x1, y1, x2, y2)
-            return [-1, -1, val]
-        if player == self.computer: # max부분
-            best[2] = -infinity
-        else: # human - min부분
-            best[2] = infinity
+            best[2] = self.evaluate(state, x1, y1, x2, y2)
+            return best
         #boundary 내부에 바둑 하나씩 배치시키며 경우 및 score 찾기 - alpha beta pruning 시작
-        for i in range(x1, x2 + 1):
-            for j in range(y1, y2 + 1):
-                #timer값 이상이 되면 그 즉시 탐색을 중단하고 값을 반환한다.
-                if datetime.datetime.now() >= self.timer:
-                    return best
-                if state[i][j] != -1:  # 빈 cell인지 확인
-                    continue
-                if player == self.computer: #max 노드
-                    state[i][j] = self.computer
-                    tx1, ty1, tx2, ty2 = self.boundary(i, j, x1, y1, x2, y2) #바둑 배치 후 경계 재설정하여 재귀함수 파라미터로 넣기
-                    score = self.alpha_beta(state, depth + 1, self.human, a, b, tx1, ty1, tx2, ty2)
-                    #alpha 작업 - max
-                    if best[2] < score[2]:
-                        best[2] = score[2]
-                        best[0] = i
-                        best[1] = j
-                    if a[2] < best[2]:
-                        a = best
-                    state[i][j] = -1  # 원상복구
-                    # pruning 발생 상황 - 발생시 해당 노드의 하위부분 보지 않고 넘어간다
-                    if b[2] <= a[2]:
-                        print('pruning------')
-                        return best
-                else:  # HUMAN - min 노드
-                    state[i][j] = self.human
-                    tx1, ty1, tx2, ty2 = self.boundary(i, j, x1, y1, x2, y2)
-                    # 바둑 배치 후 경계 재설정하여 재귀함수 파라미터로 넣기
-                    score = self.alpha_beta(state, depth + 1, self.computer, a, b, tx1, ty1, tx2, ty2)
-                    #beta 작업 - min
-                    if best[2] > score[2]:
-                        best[2] = score[2]
-                        best[0] = i
-                        best[1] = j
-                    if b[2] < best[2]:
-                        b = best
-                    state[i][j] = -1 #원상복구
-                    # pruning 발생 상황 - 발생시 해당 노드의 하위부분 보지 않고 넘어간다
-                    if b[2] <= a[2]:
-                        print('pruning------')
-                        return best
+        chk = [[0 for x in range(15)] for y in range(15)]
+        mov = {(0, -1), (0, 1), (-1, 0) , (1, 0)}
+        if player == self.computer:  # max 노드
+            best[2] = a[2]
+            for i in range(x1, x2 + 1):
+                for j in range(y1, y2 + 1):
+                    #timer값 이상이 되면 그 즉시 탐색을 중단하고 값을 반환한다.
+                    #if datetime.datetime.now() >= self.timer:
+                    #    return best
+                    if state[i][j] == -1 or chk[i][j] != 0:  # 빈 cell이거나 이미 check한 cell인 경우 넘어감
+                        continue
+                    #check하지 않은 흑 or 백 cell인 경우 상.하.좌.우 빈셀에 바둑 배치
+                    for (mi, mj) in mov:
+                        if i+mi < 0 or i+mi >= 15 or j+mj < 0 or j+mj >= 15:
+                            continue
+                        if state[i+mi][j+mj] != -1 or chk[i+mi][j+mj] != 0:
+                            continue
+                        state[i+mi][j+mj] = self.computer
+                        chk[i+mi][j+mj] = 1
+                        tx1, ty1, tx2, ty2 = self.boundary(i+mi, j+mj, x1, y1, x2, y2) #바둑 배치 후 경계 재설정하여 재귀함수 파라미터로 넣기
+                        xx, yy, score = self.alpha_beta(state, depth + 1, self.human, best, b, tx1, ty1, tx2, ty2)
+                        #alpha 작업 - max
+                        if best[2] < score:
+                            best[2] = score
+                            if depth == 0:
+                                best[0] = i+mi
+                                best[1] = j+mj
+                        state[i+mi][j+mj] = -1  # 원상복구
+                        # pruning 발생 상황 - 발생시 해당 노드의 하위부분 보지 않고 넘어간다
+                        if b[2] <= best[2]:
+                            print('pruning------')
+                            return best
+        else:  # HUMAN - min 노드
+            best[2] = b[2]
+            for i in range(x1, x2 + 1):
+                for j in range(y1, y2 + 1):
+                    if state[i][j] == -1 or chk[i][j] != 0:  # 빈 cell이거나 이미 check한 cell인 경우 넘어감
+                        continue
+                    #check하지 않은 흑 or 백 cell인 경우 상.하.좌.우 빈셀에 바둑 배치
+                    for (mi, mj) in mov:
+                        if i+mi < 0 or i+mi >= 15 or j+mj < 0 or j+mj >= 15:
+                            continue
+                        if state[i+mi][j+mj] != -1 or chk[i+mi][j+mj] != 0:
+                            continue
+                        state[i+mi][j+mj] = self.human
+                        chk[i + mi][j + mj] = 1
+                        tx1, ty1, tx2, ty2 = self.boundary(i+mi, j+mj, x1, y1, x2, y2)
+                        # 바둑 배치 후 경계 재설정하여 재귀함수 파라미터로 넣기
+                        score = self.alpha_beta(state, depth + 1, self.computer, a, best, tx1, ty1, tx2, ty2)
+                        #beta 작업 - min
+                        if best[2] > score[2]:
+                            best[2] = score[2]
+                        state[i+mi][j+mj] = -1 #원상복구
+                        # pruning 발생 상황 - 발생시 해당 노드의 하위부분 보지 않고 넘어간다
+                        if best[2] <= a[2]:
+                            print('pruning------')
+                            return best
         #pruning 발생 안된경우 return 값
         return best
 
