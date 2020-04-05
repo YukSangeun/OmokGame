@@ -354,10 +354,39 @@ class MyApp(QWidget):
         else: #player == human
     '''
 
-    #alpha-beta pruning algorithm
-    #처음 시작시 a = [-1, -1, -infinity] , b = [-1, -1, infinity]
-    #param : 현재 grid상태, 노드 깊이, human or computer, alpha, beta, boundary
-    #return : min or max 깊이에서의 각 node별 min or max 값과 해당 좌표
+    # five_succ algorithm
+    # 오목알 배치시 일자로 5개가 만들어 지는지를 확인
+    # param : 현재 grid상태, 좌표 x, y, human or cumputer
+    # return : if 5개 then true, else then false
+    def five_succ(self, state, x, y, player):
+        direction = [(0, 1), (1, 1), (1, 0), (1, -1)]  # 세로, 상승대각선, 가로, 하강대각선
+        flag = False
+        for (mx, my) in direction:
+            cnt = 1
+            for i in range(1, 5):  # (x, y)와 연속으로 같은 색 오목알 존재하는지 확인 (상승방향)
+                if x + mx * i >= 15 or y + my * i >= 15:
+                    break
+                if state[x + mx * i][y + my * i] != player:
+                    break
+                cnt += 1
+            if cnt != 5:  # 연속한 5개 위에서 못찾은 경우 하강방향도 확인
+                for i in range(1, 5):
+                    if x - mx * i < 0 or y - my * i < 0:
+                        break
+                    if state[x + mx * i][y + my * i] != player:
+                        break
+                    cnt += 1
+                    if cnt == 5:
+                        break
+            if cnt == 5:
+                flag = True
+                break
+        return flag
+
+    # alpha-beta pruning algorithm
+    # 처음 시작시 a = [-1, -1, -infinity] , b = [-1, -1, infinity]
+    # param : 현재 grid상태, 노드 깊이, human or computer, alpha, beta, boundary
+    # return : min or max 깊이에서의 각 node별 min or max 값과 해당 좌표
     def alpha_beta(self, state, depth, player, a, b, x1, y1, x2, y2):
         best = [-1, -1, 0]  # x, y, score
         print('현재 ', depth, ' ', self.level)
@@ -365,35 +394,39 @@ class MyApp(QWidget):
             # 지정한 평가함수로 값 판별하여 val에 저장
             best[2] = self.evaluate(state, x1, y1, x2, y2)
             return best
-        #boundary 내부에 바둑 하나씩 배치시키며 경우 및 score 찾기 - alpha beta pruning 시작
+        # boundary 내부에 바둑 하나씩 배치시키며 경우 및 score 찾기 - alpha beta pruning 시작
         chk = [[0 for x in range(15)] for y in range(15)]
-        mov = {(0, -1), (0, 1), (-1, 0) , (1, 0)}
+        mov = {(0, -1), (0, 1), (-1, 0), (1, 0)}
         if player == self.computer:  # max 노드
             best[2] = a[2]
             for i in range(x1, x2 + 1):
                 for j in range(y1, y2 + 1):
-                    #timer값 이상이 되면 그 즉시 탐색을 중단하고 값을 반환한다.
-                    #if datetime.datetime.now() >= self.timer:
+                    # timer값 이상이 되면 그 즉시 탐색을 중단하고 값을 반환한다.
+                    # if datetime.datetime.now() >= self.timer:
                     #    return best
                     if state[i][j] == -1 or chk[i][j] != 0:  # 빈 cell이거나 이미 check한 cell인 경우 넘어감
                         continue
-                    #check하지 않은 흑 or 백 cell인 경우 상.하.좌.우 빈셀에 바둑 배치
+                    # check하지 않은 흑 or 백 cell인 경우 상.하.좌.우 빈셀에 바둑 배치
                     for (mi, mj) in mov:
-                        if i+mi < 0 or i+mi >= 15 or j+mj < 0 or j+mj >= 15:
+                        if i + mi < 0 or i + mi >= 15 or j + mj < 0 or j + mj >= 15:
                             continue
-                        if state[i+mi][j+mj] != -1 or chk[i+mi][j+mj] != 0:
+                        if state[i + mi][j + mj] != -1 or chk[i + mi][j + mj] != 0:
                             continue
-                        state[i+mi][j+mj] = self.computer
-                        chk[i+mi][j+mj] = 1
-                        tx1, ty1, tx2, ty2 = self.boundary(i+mi, j+mj, x1, y1, x2, y2) #바둑 배치 후 경계 재설정하여 재귀함수 파라미터로 넣기
-                        xx, yy, score = self.alpha_beta(state, depth + 1, self.human, best, b, tx1, ty1, tx2, ty2)
-                        #alpha 작업 - max
-                        if best[2] < score:
-                            best[2] = score
+                        state[i + mi][j + mj] = self.computer
+                        chk[i + mi][j + mj] = 1
+                        tx1, ty1, tx2, ty2 = self.boundary(i + mi, j + mj, x1, y1, x2,
+                                                           y2)  # 바둑 배치 후 경계 재설정하여 재귀함수 파라미터로 넣기
+                        if self.five_succ(state, i + mi, j + mj, player) == True:  # 지금 배치한 오목알을 연결해서 5개 연속될 경우
+                            score = self.alpha_beta(state, self.level, self.human, best, b, tx1, ty1, tx2, ty2)
+                        else:
+                            score = self.alpha_beta(state, depth + 1, self.human, best, b, tx1, ty1, tx2, ty2)
+                        # alpha 작업 - max
+                        if best[2] < score[2]:
+                            best[2] = score[2]
                             if depth == 0:
-                                best[0] = i+mi
-                                best[1] = j+mj
-                        state[i+mi][j+mj] = -1  # 원상복구
+                                best[0] = i + mi
+                                best[1] = j + mj
+                        state[i + mi][j + mj] = -1  # 원상복구
                         # pruning 발생 상황 - 발생시 해당 노드의 하위부분 보지 않고 넘어간다
                         if b[2] <= best[2]:
                             print('pruning------')
@@ -404,26 +437,30 @@ class MyApp(QWidget):
                 for j in range(y1, y2 + 1):
                     if state[i][j] == -1 or chk[i][j] != 0:  # 빈 cell이거나 이미 check한 cell인 경우 넘어감
                         continue
-                    #check하지 않은 흑 or 백 cell인 경우 상.하.좌.우 빈셀에 바둑 배치
+                    # check하지 않은 흑 or 백 cell인 경우 상.하.좌.우 빈셀에 바둑 배치
                     for (mi, mj) in mov:
-                        if i+mi < 0 or i+mi >= 15 or j+mj < 0 or j+mj >= 15:
+                        if i + mi < 0 or i + mi >= 15 or j + mj < 0 or j + mj >= 15:
                             continue
-                        if state[i+mi][j+mj] != -1 or chk[i+mi][j+mj] != 0:
+                        if state[i + mi][j + mj] != -1 or chk[i + mi][j + mj] != 0:
                             continue
-                        state[i+mi][j+mj] = self.human
+                        state[i + mi][j + mj] = self.human
                         chk[i + mi][j + mj] = 1
-                        tx1, ty1, tx2, ty2 = self.boundary(i+mi, j+mj, x1, y1, x2, y2)
-                        # 바둑 배치 후 경계 재설정하여 재귀함수 파라미터로 넣기
-                        score = self.alpha_beta(state, depth + 1, self.computer, a, best, tx1, ty1, tx2, ty2)
-                        #beta 작업 - min
+                        tx1, ty1, tx2, ty2 = self.boundary(i + mi, j + mj, x1, y1, x2, y2)
+                        if self.five_succ(state, i + mi, j + mj, player) == True:  # 지금 배치한 오목알을 연결해서 5개 연속될 경우
+                            print("ooo")
+                            score = self.alpha_beta(state, self.level, self.computer, a, best, tx1, ty1, tx2, ty2)
+                        else:
+                            # 바둑 배치 후 경계 재설정하여 재귀함수 파라미터로 넣기
+                            score = self.alpha_beta(state, depth + 1, self.computer, a, best, tx1, ty1, tx2, ty2)
+                        # beta 작업 - min
                         if best[2] > score[2]:
                             best[2] = score[2]
-                        state[i+mi][j+mj] = -1 #원상복구
+                        state[i + mi][j + mj] = -1  # 원상복구
                         # pruning 발생 상황 - 발생시 해당 노드의 하위부분 보지 않고 넘어간다
                         if best[2] <= a[2]:
                             print('pruning------')
                             return best
-        #pruning 발생 안된경우 return 값
+        # pruning 발생 안된경우 return 값
         return best
 
     #minimax algorithm
