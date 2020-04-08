@@ -390,7 +390,7 @@ class MyApp(QWidget):
     def alpha_beta(self, state, depth, player, a, b, x1, y1, x2, y2):
         best = [-1, -1, 0]  # x, y, score
         print('현재 ', depth, ' ', self.level)
-        if depth == self.level:  # 난이도별 탐색 깊이를 다르게 설정한다.
+        if depth == 2:  # 난이도별 탐색 깊이를 다르게 설정한다.
             # 지정한 평가함수로 값 판별하여 val에 저장
             best[2] = self.evaluate(state, x1, y1, x2, y2)
             return best
@@ -417,7 +417,7 @@ class MyApp(QWidget):
                         tx1, ty1, tx2, ty2 = self.boundary(i + mi, j + mj, x1, y1, x2,
                                                            y2)  # 바둑 배치 후 경계 재설정하여 재귀함수 파라미터로 넣기
                         if self.five_succ(state, i + mi, j + mj, player) == True:  # 지금 배치한 오목알을 연결해서 5개 연속될 경우
-                            score = self.alpha_beta(state, self.level, self.human, best, b, tx1, ty1, tx2, ty2)
+                            score = self.alpha_beta(state, 2, self.human, best, b, tx1, ty1, tx2, ty2)
                         else:
                             score = self.alpha_beta(state, depth + 1, self.human, best, b, tx1, ty1, tx2, ty2)
                         # alpha 작업 - max
@@ -448,7 +448,7 @@ class MyApp(QWidget):
                         tx1, ty1, tx2, ty2 = self.boundary(i + mi, j + mj, x1, y1, x2, y2)
                         if self.five_succ(state, i + mi, j + mj, player) == True:  # 지금 배치한 오목알을 연결해서 5개 연속될 경우
                             print("ooo")
-                            score = self.alpha_beta(state, self.level, self.computer, a, best, tx1, ty1, tx2, ty2)
+                            score = self.alpha_beta(state, 2, self.computer, a, best, tx1, ty1, tx2, ty2)
                         else:
                             # 바둑 배치 후 경계 재설정하여 재귀함수 파라미터로 넣기
                             score = self.alpha_beta(state, depth + 1, self.computer, a, best, tx1, ty1, tx2, ty2)
