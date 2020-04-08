@@ -507,277 +507,103 @@ class MyApp(QWidget):
 
         return best
 
-    #evaluate function - 평가치를 이용하여 score 계산
-    #param : 현 grid, boundary
-    #return : 계산된 평가치
+    # evaluate function - 평가치를 이용하여 score 계산
+    # param : 현 grid, boundary
+    # return : 계산된 평가치
     def evaluate(self, state, x1, y1, x2, y2):
         score = 0
-        #boundary board
-        for i in range(x1, x2+1):
-            for j in range(y1, y2+1):
-                #evalutaion function - black state 경우
+        mov = {(0, 1), (1, 0), (1, 1), (-1, 1)}  # column, row, right_diagnoals, left_diagnoals
+        chk = [[[0 for x in range(15)] for y in range(15)] for z in range(4)]
+        multiple = [1, 1.7, 2.4]  # 난이도별 방어에 더 곱하기
+        # boundary board
+        for i in range(x1, x2 + 1):
+            for j in range(y1, y2 + 1):
+                shape = False  # 같은 모양 발견하면 True로 바꿈
+                # evalutaion function - black state 경우
                 for loc in BLACK_STATE:
-                    #column
-                    flag = True #STATE와 같은 모양 확인
-                    blank = False #빈 or 흰색 cell 연속 2번나오는지 확인 - 연속 두번이면 한 state비교 끝난 것
-                    for k in range(0, 7):
-                        #연속 두번 빈 cell or 흰색 cell 나오는지 확인
-                        if loc[k] == -1 or loc[k] == WHITE:
-                            if blank == False:
-                                blank = True
-                            else: #blank == True
-                                if k == 1:  #맨 처음 연속 2번이 빈 or 흰색 cell이면 flag는 false, 중간에 연속2번 나오는건 상관 없다
+                    movCase = -1
+                    for (mi, mj) in mov:  # 방향별 탐색
+                        movCase += 1
+                        if chk[movCase][i][j] == 1:
+                            continue
+                        flag = True  # STATE와 같은 모양 확인
+                        blank = False  # 빈 or 흰색 cell 연속 2번나오는지 확인 - 연속 두번이면 한 state비교 끝난 것
+                        ccnt = -1
+                        for k in range(0, 7):
+                            ccnt += 1
+                            # 연속 두번 빈 cell or 흰색 cell 나오는지 확인
+                            if loc[k] == -1 or loc[k] == WHITE:
+                                if blank == False:
+                                    blank = True
+                                else:  # blank == True
+                                    if k == 1:  # 맨 처음 연속 2번이 빈 or 흰색 cell이면 flag는 false, 중간에 연속2번 나오는건 상관 없다
+                                        flag = False
+                                    break
+                            else:  # 검은색 cell
+                                blank = False
+                            if j + k * mj > 15 or i + k * mi > 15:  # 경계 넘어가도 break
+                                flag = False
+                                break
+                            # 벽인지 확인 - j+k가 벽일 경우 벽은 흰색으로 간주한다. 따라서 loc[k] 가 0인지만 확인하면 됨
+                            if j + k * mj == 15 or i + k * mi == 15:
+                                if loc[k] != WHITE:
                                     flag = False
-                                break
-                        else: #검은색 cell
-                            blank = False
-                        if j+k > 15 or i>15: #경계 넘어가도 break
-                            flag = False
-                            break
-                        #벽인지 확인 - j+k가 벽일 경우 벽은 흰색으로 간주한다. 따라서 loc[k] 가 0인지만 확인하면 됨
-                        if j+k == 15 or i == 15:
-                            if loc[k] != WHITE:
+                                    break
+                                continue
+                            # STATE의 해당 자리와 같은 값인지 확인
+                            if loc[k] != state[i + k * mi][j + k * mj]:
                                 flag = False
                                 break
-                            continue
-                        #STATE의 해당 자리와 같은 값인지 확인
-                        if loc[k] != state[i][j+k]:
-                            flag = False
+                        # 같은 모양 찾으면 score에 점수 더하고 다음 으로 넘어가기
+                        if flag == True:
+                            shape = True
+                            for k in range(0, ccnt):
+                                chk[movCase][i + k * mi][j + k * mj] = 1
+                            if self.computer == BLACK:  # 컴퓨터가 선수경우 black_state는 컴퓨터에게 유리한것으로 양수값 더한다.
+                                score += loc[7]
+                            else:  # 사람이 선수경우 black_state는 컴퓨터에게 불리함. score에 음수값을 더한다.
+                                score -= loc[7] * multiple[self.level - 1]
                             break
-                    # 같은 모양 찾으면 score에 점수 더하고 다음 으로 넘어가기
-                    if flag == True:
-                        if self.computer == BLACK: #컴퓨터가 선수경우 black_state는 컴퓨터에게 유리한것으로 양수값 더한다.
-                            score += loc[7]
-                        else: #사람이 선수경우 black_state는 컴퓨터에게 불리함. score에 음수값을 더한다.
-                            score -= loc[7] * 2.4
-                        break
-                    #row
-                    flag = True  # STATE와 같은 모양 확인
-                    blank = False  # 빈 ot 흰색 cell 연속 2번나오는지 확인
-                    for k in range(0, 7):
-                        # 연속 두번 빈 cell or 흰색 cell 나오는지 확인
-                        if loc[k] == -1 or loc[k] == 0:
-                            if blank == False:
-                                blank = True
-                            else:  # blank == True
-                                break
-                        else:  # 검은 cell
-                            blank = False
-                        # 벽인지 확인
-                        if i+k > 15 or j > 15:
-                            flag = False
-                            break
-                        if i + k == 15 or j == 15:
-                            if loc[k] != 0:
-                                flag = False
-                                break
-                            continue
-                        # STATE의 해당 자리와 같은 값인지 확인
-                        if loc[k] != state[i+k][j]:
-                            flag = False
-                            break
-                    # 같은 모양 찾으면 score에 점수 더하고 다음 으로 넘어가기
-                    if flag == True:
-                        if self.computer == BLACK:  # 컴퓨터가 선수경우 black_state는 컴퓨터에게 유리한것으로 양수값 더한다.
-                            score += loc[7]
-                        else:  # 사람이 선수경우 black_state는 컴퓨터에게 불리함. score에 음수값을 더한다.
-                            score -= loc[7] * 2.4
-                        break
-                    #right_diagnoals
-                    flag = True  # STATE와 같은 모양 확인
-                    blank = False  # 빈 ot 흰색 cell 연속 2번나오는지 확인
-                    for k in range(0, 7):
-                        # 연속 두번 빈 cell or 흰색 cell 나오는지 확인
-                        if loc[k] == -1 or loc[k] == 0:
-                            if blank == False:
-                                blank = True
-                            else:  # blank == True
-                                break
-                        else:  # 검은 cell
-                            blank = False
-                        # 벽인지 확인
-                        if j+k > 15 or i+k > 15:
-                            flag = False
-                            break
-                        if j + k == 15 or i + k == 15:
-                            if loc[k] != 0:
-                                flag = False
-                                break
-                            continue
-                        # STATE의 해당 자리와 같은 값인지 확인
-                        if loc[k] != state[i+k][j + k]:
-                            flag = False
-                            break
-                    # 같은 모양 찾으면 score에 점수 더하고 다음 으로 넘어가기
-                    if flag == True:
-                        if self.computer == BLACK:  # 컴퓨터가 선수경우 black_state는 컴퓨터에게 유리한것으로 양수값 더한다.
-                            score += loc[7]
-                        else:  # 사람이 선수경우 black_state는 컴퓨터에게 불리함. score에 음수값을 더한다.
-                            score -= loc[7] * 2.4
-                        break
-                    #left_diagonals
-                    flag = True  # STATE와 같은 모양 확인
-                    blank = False  # 빈 ot 흰색 cell 연속 2번나오는지 확인
-                    for k in range(0, 7):
-                        # 연속 두번 빈 cell or 흰색 cell 나오는지 확인
-                        if loc[k] == -1 or loc[k] == 0:
-                            if blank == False:
-                                blank = True
-                            else:  # blank == True
-                                break
-                        else:  # 검은 cell
-                            blank = False
-                        # 벽인지 확인
-                        if j+k > 15 or i-k < -1:
-                            flag = False
-                            break
-                        if j + k == 15 or i-k == -1:
-                            if loc[k] != 0:
-                                flag = False
-                                break
-                            continue
-                        # STATE의 해당 자리와 같은 값인지 확인
-                        if loc[k] != state[i - k][j + k]:
-                            flag = False
-                            break
-                    # 같은 모양 찾으면 score에 점수 더하고 다음 으로 넘어가기
-                    if flag == True:
-                        if self.computer == BLACK:  # 컴퓨터가 선수경우 black_state는 컴퓨터에게 유리한것으로 양수값 더한다.
-                            score += loc[7]
-                        else:  # 사람이 선수경우 black_state는 컴퓨터에게 불리함. score에 음수값을 더한다.
-                            score -= loc[7] * 2.4
-                        break
                 # evalutaion function - white state 경우
+                if shape == True:  # BLACK_STATE에서 같은모양 발견한 경우 WHITE_STATE는 검사하지 않는다.
+                    continue
                 for loc in WHITE_STATE:
-                    #column
-                    flag = True #STATE와 같은 모양 확인
-                    blank = False #빈 or 검정 cell 연속 2번나오는지 확인
-                    for k in range(0, 7):
-                        #연속 두번 빈 cell or 검정 cell 나오는지 확인
-                        if loc[k] == -1 or loc[k] == 1:
-                            if blank == False:
-                                blank = True
-                            else: #blank == True
-                                break
-                        else: #흰색 cell
-                            blank = False
-                        if j+k > 15 or i > 15:
-                            flag = False
-                            break
-                        #벽인지 확인
-                        if j+k == 15 or i == 15:
-                            if loc[k] != 1:
+                    movCase = -1
+                    for (mi, mj) in mov:
+                        movCase += 1
+                        flag = True  # STATE와 같은 모양 확인
+                        blank = False  # 빈 or 검정 cell 연속 2번나오는지 확인
+                        for k in range(0, 7):
+                            # 연속 두번 빈 cell or 검정 cell 나오는지 확인
+                            if loc[k] == -1 or loc[k] == 1:
+                                if blank == False:
+                                    blank = True
+                                else:  # blank == True
+                                    break
+                            else:  # 흰색 cell
+                                blank = False
+                            if j + k * mj > 15 or i + k * mi > 15:
                                 flag = False
                                 break
-                            continue
-                        #STATE의 해당 자리와 같은 값인지 확인
-                        if loc[k] != state[i][j+k]:
-                            flag = False
-                            break
-                    # 같은 모양 찾으면 score에 점수 더하고 다음 으로 넘어가기
-                    if flag == True:
-                        if self.computer == BLACK:  # 컴퓨터가 선수경우 white_state는 컴퓨터에게 불리것으로 음수값 더한다.
-                            score -= loc[7] * 2.4
-                        else:  # 사람이 선수경우 white_state는 컴퓨터에게 유리함. score에 양수값을 더한다.
-                            score += loc[7]
-                        break
-                    #row
-                    flag = True  # STATE와 같은 모양 확인
-                    blank = False  # 빈 ot 검정 cell 연속 2번나오는지 확인
-                    for k in range(0, 7):
-                        # 연속 두번 빈 cell or 검정 cell 나오는지 확인
-                        if loc[k] == -1 or loc[k] == 1:
-                            if blank == False:
-                                blank = True
-                            else:  # blank == True
-                                break
-                        else:  # 흰 cell
-                            blank = False
-                        # 벽인지 확인
-                        if i+k > 15 or j > 15:
-                            flag = False
-                            break
-                        if i + k == 15 or j == 15:
-                            if loc[k] != 1:
+                            # 벽인지 확인
+                            if j + k * mj == 15 or i + k * mi == 15:
+                                if loc[k] != 1:
+                                    flag = False
+                                    break
+                                continue
+                            # STATE의 해당 자리와 같은 값인지 확인
+                            if loc[k] != state[i + k * mi][j + k * mj]:
                                 flag = False
                                 break
-                            continue
-                        # STATE의 해당 자리와 같은 값인지 확인
-                        if loc[k] != state[i+k][j]:
-                            flag = False
+                        # 같은 모양 찾으면 score에 점수 더하고 다음 으로 넘어가기
+                        if flag == True:
+                            for k in range(0, ccnt):
+                                chk[movCase][i + k * mi][j + k * mj] = 1
+                            if self.computer == BLACK:  # 컴퓨터가 선수경우 white_state는 컴퓨터에게 불리것으로 음수값 더한다.
+                                score -= loc[7] * multiple[self.level - 1]
+                            else:  # 사람이 선수경우 white_state는 컴퓨터에게 유리함. score에 양수값을 더한다.
+                                score += loc[7]
                             break
-                    # 같은 모양 찾으면 score에 점수 더하고 다음 으로 넘어가기
-                    if flag == True:
-                        if self.computer == BLACK:  # 컴퓨터가 선수경우 white_state는 컴퓨터에게 불리것으로 음수값 더한다.
-                            score -= loc[7] * 2.4
-                        else:  # 사람이 선수경우 white_state는 컴퓨터에게 유리함. score에 양수값을 더한다.
-                            score += loc[7]
-                        break
-                    #right_diagnoals
-                    flag = True  # STATE와 같은 모양 확인
-                    blank = False  # 빈 ot 검정 cell 연속 2번나오는지 확인
-                    for k in range(0, 7):
-                        # 연속 두번 빈 cell or 검정 cell 나오는지 확인
-                        if loc[k] == -1 or loc[k] == 1:
-                            if blank == False:
-                                blank = True
-                            else:  # blank == True
-                                break
-                        else:  # 흰 cell
-                            blank = False
-                        # 벽인지 확인
-                        if j+k > 15 or i+k > 15:
-                            flag = False
-                            break
-                        if j + k == 15 or i + k == 15:
-                            if loc[k] != 1:
-                                flag = False
-                                break
-                            continue
-                        # STATE의 해당 자리와 같은 값인지 확인
-                        if loc[k] != state[i+k][j + k]:
-                            flag = False
-                            break
-                    # 같은 모양 찾으면 score에 점수 더하고 다음 으로 넘어가기
-                    if flag == True:
-                        if self.computer == BLACK:  # 컴퓨터가 선수경우 white_state는 컴퓨터에게 불리것으로 음수값 더한다.
-                            score -= loc[7] * 2.4
-                        else:  # 사람이 선수경우 white_state는 컴퓨터에게 유리함. score에 양수값을 더한다.
-                            score += loc[7]
-                        break
-                    #left_diagonals
-                    flag = True  # STATE와 같은 모양 확인
-                    blank = False  # 빈 ot 검정 cell 연속 2번나오는지 확인
-                    for k in range(0, 7):
-                        # 연속 두번 빈 cell or 검정 cell 나오는지 확인
-                        if loc[k] == -1 or loc[k] == 1:
-                            if blank == False:
-                                blank = True
-                            else:  # blank == True
-                                break
-                        else:  # 흰 cell
-                            blank = False
-                        # 벽인지 확인
-                        if j+k > 15 or i-k < -1:
-                            flag = False
-                            break
-                        if j + k == 15 or i-k == -1:
-                            if loc[k] != 1:
-                                flag = False
-                                break
-                            continue
-                        # STATE의 해당 자리와 같은 값인지 확인
-                        if loc[k] != state[i - k][j + k]:
-                            flag = False
-                            break
-                    # 같은 모양 찾으면 score에 점수 더하고 다음 으로 넘어가기
-                    if flag == True:
-                        if self.computer == BLACK:  # 컴퓨터가 선수경우 white_state는 컴퓨터에게 불리것으로 음수값 더한다.
-                            score -= loc[7] * 2.4
-                        else:  # 사람이 선수경우 white_state는 컴퓨터에게 유리함. score에 양수값을 더한다.
-                            score += loc[7]
-                        break
-
         return score
 
     # 현재 board의 상태
